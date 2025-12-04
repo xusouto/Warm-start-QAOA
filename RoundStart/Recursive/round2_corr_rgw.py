@@ -22,16 +22,17 @@ n_ = args.n
 flag = args.flag.lower() == "true"
 iteration = args.iter
 
+
 # ---------------------------------------------------------------------
 # Load current graph
 # ---------------------------------------------------------------------
-graph_path = f"Graphs/graph{n_}_{flag}_{iteration}.json"
+graph_path = f"RGW/Graphs/graph{n_}_{flag}_{iteration}.json"
 with open(graph_path, "r", encoding="utf-8") as f:
     data_graph = json.load(f)
 
 G = json_graph.node_link_graph(data_graph["graph"])
 
-cuts_path = f"Cuts/cuts{n_}_{flag}_{iteration}.json"
+cuts_path = f"RGW/Cuts/cuts{n_}_{flag}_{iteration}.json"
 with open(cuts_path, "r", encoding="utf-8") as f:
     data_cuts = json.load(f)
 
@@ -124,7 +125,7 @@ out = {
     "nodes_remaining": nodes_next,
 }
 
-out_dir = Path("Graphs")
+out_dir = Path("RGW/Graphs")
 out_dir.mkdir(parents=True, exist_ok=True)
 
 # Decrease n_ by 1 for the reduced instance (same pattern as your quantum script)

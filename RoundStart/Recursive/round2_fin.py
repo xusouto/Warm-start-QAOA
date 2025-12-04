@@ -47,26 +47,28 @@ from networkx.readwrite import json_graph
 # Parser
 # -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 parser = argparse.ArgumentParser(description="MAXCUT Optimization Script")
-parser.add_argument("--n", type = int, required= True, help = "Numer of graph")
-parser.add_argument("--t", type = int, required= True, help = "Numer of graph")
-parser.add_argument("--flag", type = str, required= True, help = "Numer of graph")
-parser.add_argument("--iter", type = int, required= True, help = "Numer of graph")
+parser.add_argument("--n", type = int, required= True, help = "Number of init nodes graph")
+parser.add_argument("--t", type = int, required= True, help = "Numer of current nodes graph")
+parser.add_argument("--flag", type = str, required= True, help = "Type of graph")
+parser.add_argument("--iter", type = int, required= True, help = "Number of graph")
+parser.add_argument("--folder", type=Path, required=True,
+                   help="Folder containing result JSON files.")
 args = parser.parse_args()
 n_init = args.n
 n_final = args.t
 flag = args.flag.lower() == "true"
 iteration = args.iter
-with open(f"Graphs/graph{n_final}_{flag}_{iteration}.json", "r", encoding="utf-8") as f:
+path = args.folder
+with open(os.path.join(path, "Graphs", f"graph{n_final}_{flag}_{iteration}.json"), "r", encoding="utf-8") as f:
     data = json.load(f)   
 G1 = json_graph.node_link_graph(data["graph"]) 
 remaining_nodes = data["nodes_remaining"]
-with open(f"Graphs/graph{n_init}_{flag}_{iteration}.json", "r", encoding="utf-8") as f:
+with open(os.path.join(path, "Graphs", f"graph{n_init}_{flag}_{iteration}.json"), "r", encoding="utf-8") as f:
     data = json.load(f)   
 G0 = json_graph.node_link_graph(data["graph"])
 x_bits = data["sol"]
-print(G0, flush = True)
 eliminations_chain: list[tuple[int, int, int]] = []
-graphs_dir = Path("Graphs")
+graphs_dir = Path(path) / "Graphs"
 for m in range(n_init - 1, n_final - 1, -1):   # N0-1, N0-2, ..., n_stop
     path_m = graphs_dir / f"graph{m}_{flag}_{iteration}.json"
     with open(path_m, "r", encoding="utf-8") as f:
@@ -213,9 +215,9 @@ cut_size = (w_full / w_opt)
 #  Out .jsons
 # ---------------------------------------------------------------------------------------
 out = {"cut_size": cut_size}
-out_dir = Path("/mnt/netapp1/Store_CESGA/home/cesga/jsouto/WS_GitHub/RoundStart/Recursive/Solutions")
+out_dir = Path(path) / "Solutions"
 out_dir.mkdir(parents=True, exist_ok=True)
-out_path = out_dir / f"graph{n_init}_{flag}_{iteration}.json"
+out_path = out_dir / f"sol_graph{n_init}_{flag}_{iteration}.json"
 with open(out_path, "w", encoding="utf-8") as f:
     json.dump(out, f, ensure_ascii=False, indent=2)
 # -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

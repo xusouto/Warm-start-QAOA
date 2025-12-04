@@ -56,7 +56,7 @@ n_ = args.n
 flag = args.flag.lower() == "true"
 iteration = args.iter
 # Graph info
-with open(f"Graphs/graph{n_}_{flag}_{iteration}.json", "r", encoding="utf-8") as f:
+with open(f"CS-RQAOA/Graphs/graph{n_}_{flag}_{iteration}.json", "r", encoding="utf-8") as f:
     data_graphs = json.load(f)   
 G = json_graph.node_link_graph(data_graphs["graph"]) 
 # -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -290,7 +290,7 @@ out = {"n": n_,
        "iter": iteration,
        "pwf": pwf,
        }
-out_dir = Path("/mnt/netapp1/Store_CESGA/home/cesga/jsouto/WS_GitHub/RoundStart/Recursive/Probabilities_cold")
+out_dir = Path("CS-RQAOA/Probabilities")
 out_dir.mkdir(parents=True, exist_ok=True)
 out_path = out_dir / f"probs{n_}_{flag}_{iteration}.json"
 with open(out_path, "w", encoding="utf-8") as f:

@@ -135,9 +135,9 @@ cut_size = (w_gw / w_opt)
 # Outputs saved in .json files
 # -------------------------------------------------------------------------------------------------------
 out = {"cuts_size": cut_size}
-out_dir = Path("/mnt/netapp1/Store_CESGA/home/cesga/jsouto/WS_GitHub/RoundStart/Recursive/Solutions_GW")
+out_dir = Path("GW/Solutions")
 out_dir.mkdir(parents=True, exist_ok=True)
-out_path = out_dir / f"sols_gw_{n_}_{flag}_{iteration}.json"
+out_path = out_dir / f"sol_graph{n_}_{flag}_{iteration}.json"
 with open(out_path, "w", encoding="utf-8") as f:
     json.dump(out, f, ensure_ascii=False, indent=2)
 # -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

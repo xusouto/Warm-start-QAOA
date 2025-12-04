@@ -28,14 +28,14 @@ t=$1  # Initialize t to n
 n=$1
 
 # First task with initial iteration
-#srun -n1 --cpus-per-task=1 --exclusive --cpu-bind=threads python round2_graph.py --n "$1" --flag "$2" --iter "$3" &
-#wait
+srun -n1 --cpus-per-task=1 --exclusive --cpu-bind=threads python round2_graph.py --n "$1" --flag "$2" --iter "$3" --folder CS-RQAOA&
+wait
 echo "Graphs generated:    $(date)"
 # Main loop: run while t > n/2
 while [ "$t" -gt $(( n / 2 )) ]; do
 
   srun -n1 --cpus-per-task=1 --exclusive --cpu-bind=threads \
-    python round2_qaoa_cold.py --n "$t" --flag "$2" --iter "$3"  &
+    python round2_qaoa_cold.py --n "$t" --flag "$2" --iter "$3" &
 
   wait
   echo "CS-QAOA done:    $(date)"
@@ -49,7 +49,7 @@ done
 
 # Final reconstruction
 srun -n1 --cpus-per-task=1 --exclusive --cpu-bind=threads \
-  python round2_fin.py --n "$1" --t "$t" --flag "$2" --iter "$3"
+  python round2_fin.py --n "$1" --t "$t" --flag "$2" --iter "$3" --folder CS-RQAOA
 
 # Wait for all tasks to complete
 wait

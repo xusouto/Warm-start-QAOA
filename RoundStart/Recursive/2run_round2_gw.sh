@@ -27,7 +27,7 @@ BASE="/mnt/netapp1/Store_CESGA/home/cesga/jsouto/WS_GitHub/RoundStart/Recursive"
 
 
 # First task with initial iteration
-srun -n1 --cpus-per-task=1 --exclusive --cpu-bind=threads python round2_graph.py --n "$1" --flag "$2" --iter "$3" &
+srun -n1 --cpus-per-task=1 --exclusive --cpu-bind=threads python round2_graph.py --n "$1" --flag "$2" --iter "$3" --folder GW&
 wait
 echo "Graphs generated:    $(date)"
 srun -n1 --cpus-per-task=1 --exclusive --cpu-bind=threads \

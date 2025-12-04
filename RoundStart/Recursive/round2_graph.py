@@ -35,10 +35,13 @@ parser = argparse.ArgumentParser(description="MAXCUT Optimization Script")
 parser.add_argument("--n", type = int, required= True, help = "Numer of graph")
 parser.add_argument("--flag", type = str, required= True, help = "Numer of graph")
 parser.add_argument("--iter", type = int, required= True, help = "Numer of graph")
+parser.add_argument("--folder", type=Path, required=True,
+                   help="Folder containing result JSON files.")
 args = parser.parse_args()
 n_ = args.n
 flag = args.flag.lower() == "true"
 iteration = args.iter
+path = args.folder
 # -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 # MAXCUT problem 
@@ -116,7 +119,7 @@ data = json_graph.node_link_data(G_py)   # now JSON-safe
 # Out .jsons
 # -------------------------------------------------------------------------------------------------------
 out = {"graph": data, "sol": x_bits}
-out_dir = Path("/mnt/netapp1/Store_CESGA/home/cesga/jsouto/WS_GitHub/RoundStart/Recursive/Graphs")
+out_dir = Path(path) / "Graphs"
 out_dir.mkdir(parents=True, exist_ok=True)
 out_path = out_dir / f"graph{n_}_{flag}_{iteration}.json"
 with open(out_path, "w", encoding="utf-8") as f:
