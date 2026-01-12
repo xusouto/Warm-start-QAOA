@@ -4,8 +4,8 @@
 #SBATCH -e myjob_%j.e
 #SBATCH --time=24:00:00
 #SBATCH --nodes=1
-#SBATCH --ntasks=5              # 64 total tasks (processes)
-#SBATCH --cpus-per-task=10         # 1 hw-thread per task
+#SBATCH --ntasks=1              # 64 total tasks (processes)
+#SBATCH --cpus-per-task=1         # 1 hw-thread per task
 #SBATCH --mem-per-cpu=200M          # 64 * 3G = 192G total (ensure node has this)
 
 
@@ -23,28 +23,27 @@ echo "Current dir:   $(pwd)"
 echo "Start time:    $(date)"
 echo "========================================="
 
-BASE="/mnt/netapp1/Store_CESGA/home/cesga/jsouto/WS_GitHub/RoundStart/Recursive"
-t=$1  # Initialize t to n
+
+t=$1  
 n=$1
 
-# First task with initial iteration
 srun -n1 --cpus-per-task=1 --exclusive --cpu-bind=threads python round2_graph.py --n "$1" --flag "$2" --iter "$3" --folder RGW&
 wait
 echo "Graphs generated:    $(date)"
-# Main loop: run while t > n/2
+# Run while t > n/2
 while [ "$t" -gt $(( n / 2 )) ]; do
-  # GW pre-solver (serial)
+  # GW pre-solver 
   srun -n1 --cpus-per-task=1 --exclusive --cpu-bind=threads \
     python round2_cuts.py --n "$t" --flag "$2" --iter "$3" --folder RGW
   echo "Cuts generated:    $(date)"
-  CUTS_JSON="$BASE/Cuts/cuts${t}_$2_$3.json"
+  CUTS_JSON="RGW/Cuts/cuts${t}_$2_$3.json"
   NUMCUTS=$(python -c 'import json,sys; d=json.load(open(sys.argv[1])); print(int(d.get("numcuts",0)))' "$CUTS_JSON")
 
-  # Correlation + reduction (pass numcuts if your script expects it)
+  # Correlation + reduction
   srun -n1 --cpus-per-task=1 --exclusive --cpu-bind=threads \
     python round2_corr_rgw.py --n "$t" --flag "$2" --iter "$3" 
   echo "Correlation matrix built:    $(date)"
-  # Decrement
+
   t=$((t-1))
 done
 

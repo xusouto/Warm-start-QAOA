@@ -56,28 +56,12 @@ N = args.steps
 
 # Quadratic problem 
 # -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-def create_problem(mu: np.array, sigma: np.array, total, q, lam) -> QuadraticProgram:
-    mdl = Model()
-    x = [mdl.binary_var("x%s" % i) for i in range(len(sigma))]
-    objective = mdl.sum([mu[i] * x[i] for i in range(len(mu))])
-    objective -= q * mdl.sum(
-        [sigma[i, j] * x[i] * x[j] for i in range(len(mu)) for j in range(len(mu))]
-    )
-    sumx = mdl.sum(x)
-    penalty_expr = lam * (sumx - total) * (sumx - total)
-    objective -= penalty_expr
-    mdl.maximize(objective)
-    cost = mdl.sum(x)
-    mdl.add_constraint(cost == total)
-    qp = from_docplex_mp(mdl)
-    return qp
 def create_problem1(mu, Sigma, total, q, lam):
     n = len(mu)
     mdl = Model()
     x = [mdl.binary_var(name=f"x{i}") for i in range(n)]
     sumx = mdl.sum(x)
 
-    # soft budget version (as in the paper)
     mdl.maximize(
         mdl.sum(mu[i]*x[i] for i in range(n))
         - q * mdl.sum(Sigma[i,j]*x[i]*x[j] for i in range(n) for j in range(n))
@@ -94,14 +78,14 @@ def relax_problem(problem) -> QuadraticProgram:
 # -------------------------------------------------------------------------------------------------------
 def simulate_portfolio_gbm(n: int = 6, N: int = 250, *, mu_range = (-0.05, 0.05), sigma_range = (-0.20, 0.20), seed: int):
     """
-    Simulate n asset price paths via GBM for N days then return (mu, Sigma) 
+    Simulate n asset price paths via GBM for N days then return mu, Sigma).
     """
     rng = np.random.default_rng(seed)
     mu_i = rng.uniform(mu_range[0], mu_range[1], size=n)     
     sigma_i = rng.uniform(sigma_range[0], sigma_range[1], size=n)     
 
     # Brownian motion increments
-    z = rng.standard_normal(size=(n, N))        # independent per asset/day
+    z = rng.standard_normal(size=(n, N))      
     W = np.cumsum(z, axis=1) / np.sqrt(N)           
 
     # Build S_{i,k} using S_{i,0}=1 and the closed-form GBM solution
@@ -178,7 +162,7 @@ def anneal_circuit_from_qubo(n, Q, T, N, mixer="warm", c_star=None, eps=0.0):
     qubits = list(range(n))
     delta_t = T / N
 
-    # initial state
+    # Initial state
     if mixer == "equal":
         prepare_equal_superposition(circ, qubits)
         thetas = None
@@ -218,70 +202,9 @@ def solve_hm(n, Q, T, N, mixer, cost_operator, pre_sol, eps, solution):
 
 # Qiskit Utils
 # -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-def to_bitstring(integer, num_bits):
-    result = np.binary_repr(integer, width=num_bits)
-    return [int(digit) for digit in result]
-# -------------------------------------------------------------------------------------------------------
-def _bs_from_pre_sol(pre_sol) -> str:
-    return "".join("1" if float(b) > 0.5 else "0" for b in pre_sol)
-def get_probs1(circuit: QuantumCircuit, result, pre_sol):
-    """
-    Exact P(pre_sol) using StatevectorSampler, with a measured copy of the circuit
-    to avoid the 'no classical registers' warning.
-    `result` can be OptimizeResult (.x) or array-like.
-    """
-    params = getattr(result, "x", result)
-    bound = circuit.assign_parameters(params).copy()
-
-    # Add classical bits + measurements to avoid the warning (on the copy only)
-    bound.measure_all(add_bits=True)
-
-    bs = _bs_from_pre_sol(pre_sol)
-    n = bound.num_qubits
-    if len(bs) != n:
-        raise ValueError(f"pre_sol length ({len(bs)}) != circuit qubits ({n})")
-
-    sampler = StatevectorSampler()
-    res = sampler.run([bound]).result()
-
-    # Case A: classic SamplerResult with quasi_dists (int keys, little-endian)
-    qd = getattr(res, "quasi_dists", None)
-    if qd is not None:
-        return float(qd[0].get(int(bs[::-1], 2), 0.0))
-
-    # Case B: PrimitiveResult style with bitstring probabilities
-    try:
-        probs_bin = res[0].data.meas.get_probabilities()  # {'0101': p, ...}
-        return float(probs_bin.get(bs, 0.0))
-    except Exception:
-        # Fallback: pure statevector (shouldn't be hit with StatevectorSampler)
-        sv = Statevector.from_instruction(bound.remove_final_measurements(inplace=False))
-        return float(abs(sv.data[int(bs[::-1], 2)])**2)
-def get_probs(circuit, backend, pre_sol):
-    optimized_circuit = circuit
-    sampler = Sampler(mode=backend)
-    pub = (optimized_circuit,)
-    job = sampler.run([pub], shots=int(1e4))
-    counts_int = job.result()[0].data.meas.get_int_counts()
-    counts_bin = job.result()[0].data.meas.get_counts()
-    shots = sum(counts_int.values())
-    final_distribution_bin = {key: val / shots for key, val in counts_bin.items()}
-    bs = "".join("1" if float(b) > 0.5 else "0" for b in pre_sol)
-    return float(final_distribution_bin.get(bs, 0.0))
-# -------------------------------------------------------------------------------------------------------
 def get_expval1(candidate_circuit, hamiltonian, backend):
-    # If ansatz has a layout (because you transpiled), map the observable to it:
     estimator = StatevectorEstimator()
     job = estimator.run([(candidate_circuit, hamiltonian)])
-    result = job.result()[0]
-    cost = float(result.data.evs)
-    return cost
-def get_expval(candidate_circuit, hamiltonian, backend):
-    # If ansatz has a layout (because you transpiled), map the observable to it:
-    isa_hamiltonian = hamiltonian.apply_layout(candidate_circuit.layout) if getattr(candidate_circuit, "layout", None) else hamiltonian
-    estimator = Estimator(mode=backend)
-    estimator.options.default_shots = 500000
-    job = estimator.run([(candidate_circuit, isa_hamiltonian)])
     result = job.result()[0]
     cost = float(result.data.evs)
     return cost
@@ -289,15 +212,11 @@ def get_expval(candidate_circuit, hamiltonian, backend):
 
 # Problem Utils
 # -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-def QUBO_to_Ising(Q: Tensor) -> Tuple[Tensor, List[float], float]:
+def QUBO_to_Ising(Q):
     """
     Cnvert the Q matrix into a the indication of pauli terms, the corresponding weights, and the offset.
     The outputs are used to construct an Ising Hamiltonian for QAOA.
     """
-
-    # input is n-by-n symmetric numpy array corresponding to Q-matrix
-    # output is the components of Ising Hamiltonian
-
     n = Q.shape[0]
 
     # square matrix check
@@ -337,7 +256,7 @@ def QUBO_to_Ising(Q: Tensor) -> Tuple[Tensor, List[float], float]:
 
     return pauli_terms, weights, offset
 # -------------------------------------------------------------------------------------------------------
-def QUBO_from_portfolio(cov: Array, mean: Array, q: float, B: int, t: float) -> Tensor:
+def QUBO_from_portfolio(cov: Array, mean: Array, q: float, B: int, t: float):
     """
     Convert portfolio parameters to a Q matrix
     """
@@ -348,16 +267,9 @@ def QUBO_from_portfolio(cov: Array, mean: Array, q: float, B: int, t: float) -> 
     Q = q * cov - R + t * S
     return Q
 # -------------------------------------------------------------------------------------------------------
-def ising_from_terms_qiskit(
-    pauli_terms: List[List[float]],
-    weights: List[float],
-    offset: float = 0.0,
-    reverse_qubit_order: bool = True,
-) -> SparsePauliOp:
+def ising_from_terms_qiskit(pauli_terms, weights, offset: float = 0.0,reverse_qubit_order: bool = True):
     """
-    Build H = sum_k w_k * Z^{(term_k)} + offset * I from:
-      - pauli_terms: list of 0/1 masks (floats ok) length n each
-      - weights:    list/array of coefficients (same length as pauli_terms)
+    Build H = sum_k w_k * Z^{(term_k)} + offset * I.
     Returns a Qiskit SparsePauliOp.
     """
     T = np.asarray(pauli_terms, dtype=float)
@@ -385,11 +297,7 @@ def ising_from_terms_qiskit(
 
 # Energy calculation
 # -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-def ground_energy_from_terms(
-    pauli_terms: List[List[int]],
-    weights: List[float],
-    offset: float = 0.0,
-) -> Tuple[float, List[int]]:
+def ground_energy_from_terms(pauli_terms, weights, offset: float = 0.0):
     """
     Compute E0 and one minimizing bitstring for an Ising-type Hamiltonian.
     """
@@ -398,11 +306,10 @@ def ground_energy_from_terms(
     n = len(pauli_terms[0])
     m = len(pauli_terms)
 
-    # Generate all bitstrings (rows) and map to spins z in {+1,-1}
+    # Generate all bitstrings and map to spins z in {+1,-1}
     num = 1 << n
     a = np.arange(num, dtype=np.uint64)
-    # bits[:, i] is bit of qubit i (LSB = qubit 0)
-    shifts = np.arange(n, dtype=np.uint64)           # CRITICAL: unsigned dtype
+    shifts = np.arange(n, dtype=np.uint64)          
     bits = ((a[:, None] >> shifts) & np.uint64(1)).astype(np.int8)
     z = 1 - 2 * bits  # 0->+1, 1->-1
 
@@ -418,14 +325,12 @@ def ground_energy_from_terms(
             i, j = int(idx[0]), int(idx[1])
             E += w * (z[:, i] * z[:, j])
         else:
-            # If you ever had higher-order Z terms, this still works:
-            # E += w * np.prod(z[:, idx], axis=1)
             raise ValueError("Only Z and ZZ terms are supported.")
 
     # Ground energy and a minimizer
     k_min = int(np.argmin(E))
     E0 = float(E[k_min])
-    ground_bits = bits[k_min].tolist()  # [b0, b1, ..., b_{n-1}]
+    ground_bits = bits[k_min].tolist()
     return E0, ground_bits
 # -------------------------------------------------------------------------------------------------------
 def print_Q_cost(Q, wrap=False, reverse=False):
@@ -460,15 +365,10 @@ def print_Q_cost(Q, wrap=False, reverse=False):
     print("     ...\t  |\t  ...")
     print("-------------------------------------")
 # -------------------------------------------------------------------------------------------------------
-def energy_from_terms(
-    bits: List[int],
-    pauli_terms: List[List[float]],
-    weights: List[float],
-    offset: float = 0.0,
-) -> float:
+def energy_from_terms(bits, pauli_terms, weights, offset: float = 0.0):
     """
     Compute E(bits) for H = sum_k w_k * Z^{(term_k)} + offset * I.
-    bits is a list like [b0, b1, ..., b_{n-1}] with b in {0,1}.
+    Bits is a list like [b0, b1, ..., b_{n-1}] with b in {0,1}.
     """
     z = 1 - 2 * np.asarray(bits, dtype=int)  # 0->+1, 1->-1
     E = float(offset)

@@ -47,9 +47,7 @@ from qiskit_optimization import QuadraticProgram
 
 # Parser
 # -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-p = argparse.ArgumentParser(
-        description="Extract the graph number and one selected cut (0–4) from a results file."
-    )
+p = argparse.ArgumentParser(description="Extract the graph number and one selected cut (0–4) from a results file.")
 p.add_argument("file", help="Path to results file (e.g., results_g0.txt)")
 p.add_argument("--cut", type=int, required=True, help="Cut index (0..4)")
 args = p.parse_args()
@@ -138,7 +136,6 @@ def to_bitstring(integer, num_bits):
 # Qiskit Utils
 # -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 def get_expval1(result, candidate_circuit, hamiltonian, backend):
-    # If ansatz has a layout (because you transpiled), map the observable to it:
     isa_hamiltonian = hamiltonian.apply_layout(candidate_circuit.layout) if getattr(candidate_circuit, "layout", None) else hamiltonian
     estimator = Estimator(mode=backend)
     estimator.options.default_shots = 1000000
@@ -154,61 +151,8 @@ def cost_func_estimator(params, ansatz, hamiltonian, backend):
 
 # Parameter initialization
 # -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-def fit_ab_from_two_points(beta_vals, energy_vals):
-    """
-    Solve [sin(2β) sin(4β)] [a b]^T = E  (2 equations, 2 unknowns).
-    """
-    S = np.column_stack([np.sin(2*beta_vals), np.sin(4*beta_vals)]) 
-    (a, b), *_ = np.linalg.lstsq(S, np.asarray(energy_vals, dtype=float), rcond=None)
-    return a, b
-# -------------------------------------------------------------------------------------------------------
 def _E_of_beta(a, b, beta):
     return a*np.sin(2*beta) + b*np.sin(4*beta)
-# -------------------------------------------------------------------------------------------------------
-def optimal_beta_from_ab(a, b, domain=(3*np.pi/8, 3*np.pi/4)):
-    """
-    Minimize f(β)=a sin(2β)+b sin(4β) on β ∈ [β_min, β_max].
-    Analytic stationary points from df/dβ = 0 → 2a cos(2β) + 4b cos(4β) = 0.
-    Using cos(4β)=2cos^2(2β)-1, set x = cos(2β):
-        8b x^2 + 2a x - 4b = 0  (quadratic in x)
-    """
-    beta_min, beta_max = domain
-    candidates = []
-
-    # Always include endpoints
-    candidates.extend([beta_min, beta_max])
-
-    # Handle general case b != 0 with quadratic in x = cos(2β)
-    if abs(b) > 1e-12:
-        disc = a*a + 32.0*b*b   # discriminant for x solutions after simplification
-        sqrt_disc = np.sqrt(disc)
-        for x in [(-a + sqrt_disc)/(8.0*b), (-a - sqrt_disc)/(8.0*b)]:
-            # numerical safety: clamp x to [-1, 1]
-            x = float(np.clip(x, -1.0, 1.0))
-            # β candidates from cos(2β) = x → 2β = arccos(x) or 2β = -arccos(x)
-            for ang in [np.arccos(x), -np.arccos(x)]:
-                beta = 0.5*ang
-                # map into [0, π] by adding multiples of π if needed
-                while beta < beta_min:
-                    beta += np.pi
-                while beta > beta_max:
-                    beta -= np.pi
-                # keep unique (within tolerance)
-                if not any(abs(beta - c) < 1e-10 for c in candidates):
-                    candidates.append(beta)
-    else:
-        # b == 0 → df/dβ = 2a cos(2β)=0 → β = π/4 + k*π/2
-        if abs(a) > 1e-16:
-            base = np.pi/4
-            for k in range(-2, 5):
-                beta = base + k*(np.pi/2)
-                if beta_min - 1e-12 <= beta <= beta_max + 1e-12:
-                    candidates.append(np.clip(beta, beta_min, beta_max))
-
-    # Evaluate and pick the best
-    vals = np.array([_E_of_beta(a, b, be) for be in candidates], dtype=float)
-    idx = int(np.argmin(vals))
-    return float(candidates[idx]), float(vals[idx]), (float(a), float(b)), candidates, vals
 # -------------------------------------------------------------------------------------------------------
 def ab_from_energies_fixed_betas(E_beta1: float, E_beta2: float):
     a = -E_beta1
@@ -218,7 +162,6 @@ def ab_from_energies_fixed_betas(E_beta1: float, E_beta2: float):
 def beta_star_from_ab_scipy(a: float, b: float, domain=(3*np.pi/8, 3*np.pi/4)):
     """
     Minimize the surrogate f(β) = a sin(2β) + b sin(4β)
-    over β in [β_min, β_max] using scipy.optimize.minimize.
     """
     beta_min, beta_max = domain
 
@@ -356,9 +299,9 @@ def solve_hm(n, warm: bool, lukewarm: bool, cost_operator, pauli_params, pauli_w
         args=(circuit_w_ansz, cost_operator, backend),
         method="COBYLA",
         options={
-        'rhobeg': 0.4,                        # ~10% of variable scale; tune 0.05–0.5
+        'rhobeg': 0.4,                      
         'tol': 1e-4,
-        'maxiter': 100000,                    # stopping tolerance; try 1e-3…1e-5          
+        'maxiter': 100000,                    # stopping tolerance        
     })
         
     print(result, flush = True )  
@@ -371,10 +314,14 @@ def solve_hm(n, warm: bool, lukewarm: bool, cost_operator, pauli_params, pauli_w
 
 # Script
 # -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# Parameter setup
 # -------------------------------------------------------------------------------------------------------
 n=20                                                                    # Size of graph
 eps = np.linspace(0,0.5,21)                                             # Reg. parameter
 energies = []
+depth = 1
+# -------------------------------------------------------------------------------------------------------
+# Graph generation
 # -------------------------------------------------------------------------------------------------------
 G, colors, pos = gen_maxcut(n, True, -10, 10, graph)                    # Graph generation, seeded 
 pauli_terms, weights, offset = QUBO_to_Ising_weighted_graph_nx(G)       # Generate Pauli terms and weights
@@ -384,21 +331,18 @@ H = ising_from_terms_qiskit(pauli_terms, weights, 0)                    # Genera
 print("offset", offset, flush = True)
 E_mc+=offset
 # -------------------------------------------------------------------------------------------------------
-depth = 1
 # Grid search params
 # -------------------------------------------------------------------------------------------------------
 gamma_grid = np.linspace(-2*np.pi, 2*np.pi, 25)  # 25 values from −2π to 2π
 beta_probes = np.array([3*np.pi/4, 3*np.pi/8])   # β ∈ {3π/4, 3π/8}
-
+# -------------------------------------------------------------------------------------------------------
 # Iteration w.r.t. reg. parameter
 # -------------------------------------------------------------------------------------------------------
 beta_star_per_gamma = []
 E_star_per_gamma = []
-
 backend = AerSimulator()
 backend.set_options(max_parallel_threads=4)
 backend.set_options(max_parallel_shots=4)
-
 for ep in eps:
     print(f"Regularization parameter: {ep} ---------------------------------------------------------")
     #########################

@@ -6,7 +6,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1               # 64 total tasks (processes)
 #SBATCH --cpus-per-task=1         # 1 hw-thread per task
-#SBATCH --mem=100G          
+#SBATCH --mem=200M          
 
 module load qmio/hpc miniconda3/22.11.1-1
 conda activate simulators

@@ -136,12 +136,11 @@ def plot(eps: np.ndarray,
 
     plt.figure()
 
-    # 1) Small dots for each WS-QAOA run
-    #    (plotting each file's energy array as tiny points along eps)
+    # Small dots for each WS-QAOA run
     for run in all_runs:
         plt.scatter(eps, run, s=8, alpha=0.35, linewidths=0)
 
-    # 2+3) IQR band & median across graphs (of per-graph means)
+    # IQR band & median across graphs 
     p25 = np.percentile(per_graph_means_stack, 25, axis=0)
     med = np.percentile(per_graph_means_stack, 50, axis=0)
     p75 = np.percentile(per_graph_means_stack, 75, axis=0)
@@ -149,27 +148,24 @@ def plot(eps: np.ndarray,
     plt.fill_between(eps, p25, p75, alpha=0.25, label="IQR (25–75%) across graphs")
     plt.plot(eps, med, label="Median (across graphs)")
 
-    # --- NEW: annotate the two maximum points of the median curve ---
+    # Two maximum points of the median curve
     if med.size >= 2:
-        # indices of the two largest median values
         top2_idx = np.argsort(med)[-2:]
         for i in top2_idx:
             x_val = eps[i]
             y_val = med[i]
-            # optional marker to highlight
             plt.scatter([x_val], [y_val], s=30, zorder=5)
-            # text with value next to the point
             plt.annotate(
                 f"{y_val:.3g}",
                 xy=(x_val, y_val),
-                xytext=(0, 8),           # slight offset above the point
+                xytext=(0, 8),           
                 textcoords="offset points",
                 ha="center",
                 fontsize=8,
             )
     # ---------------------------------------------------------------
 
-    # 4) Original mean ± error shading (if requested), added on top for continuity
+    # Original mean ± error shading 
     plt.plot(eps, mean, linestyle="--", label="Mean (across graphs)")
     if err_mode != "none" and np.any(err > 0):
         lower = mean - err
@@ -207,22 +203,22 @@ def main():
         else:
             print(f"  - Graph {g}: {ncuts} cuts")
 
-    # Two-stage stats (and per-graph means stack for quantiles/median)
+    # Two-stage stats 
     mean, std_graphs, stderr_graphs, per_graph_means_stack = compute_two_stage_stats(by_graph)
 
-    # Choose error shading (across graphs)
+    # Choose error shading 
     err = {"none": np.zeros_like(mean), "std": std_graphs, "stderr": stderr_graphs}[args.with_error]
 
-    # Save CSV (mean + std across graphs) – unchanged
+    # Save CSV 
     save_csv(args.csv, eps, mean, std_graphs)
     print(f"[OK] Saved CSV -> {args.csv}")
 
-    # Collect all individual WS-QAOA runs (each file) for dot layer
+    # Collect all individual WS-QAOA runs for dot layer
     all_runs = []
     for e_list in by_graph.values():
         all_runs.extend(e_list)  # each is shape (N,)
 
-    # Plot with dots + IQR + median (+ optional mean±error)
+    # Plot with dots + IQR + median
     plot(eps, mean, err, args.with_error, per_graph_means_stack, all_runs, args.png)
 
 if __name__ == "__main__":

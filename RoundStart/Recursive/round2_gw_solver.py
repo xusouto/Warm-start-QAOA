@@ -40,7 +40,7 @@ args = parser.parse_args()
 n_ = args.n
 flag = args.flag.lower() == "true"
 iteration = args.iter
-with open(f"Graphs/graph{n_}_{flag}_{iteration}.json", "r", encoding="utf-8") as f:
+with open(f"GW/Graphs/graph{n_}_{flag}_{iteration}.json", "r", encoding="utf-8") as f:
     data = json.load(f)   
 G = json_graph.node_link_graph(data["graph"]) 
 x_opt = data["sol"]
@@ -127,10 +127,17 @@ x_gw = best_cut["x"]
 print(x_gw , flush = True)
 print(x_opt, flush = True)
 w_opt = cut_weight(G, x_opt)
+w_opt1 = _cut_weight_from_x(G, x_opt)
 w_gw = cut_weight(G, x_gw)
+w_gw1 = _cut_weight_from_x(G, x_gw)
 print(w_gw , flush = True)
 print(w_opt, flush = True)
+print(w_gw1 , flush = True)
+print(w_opt1, flush = True)
 cut_size = (w_gw / w_opt)
+cut_size1 = (w_gw1 / w_opt1)
+print(cut_size , flush = True)
+print(cut_size1, flush = True)
 # -------------------------------------------------------------------------------------------------------
 # Outputs saved in .json files
 # -------------------------------------------------------------------------------------------------------

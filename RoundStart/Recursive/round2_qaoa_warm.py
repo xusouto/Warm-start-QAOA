@@ -58,11 +58,11 @@ flag = args.flag.lower() == "true"
 iteration = args.iter
 cut_pos = args.cut
 # Cut info
-with open(f"WS-RQAOA/Cuts/cuts{n_}_{flag}_{iteration}.json", "r", encoding="utf-8") as f:
+with open(f"WS_RQAOA/Cuts/cuts{n_}_{flag}_{iteration}.json", "r", encoding="utf-8") as f:
     data_cuts = json.load(f)   
 cut = data_cuts["cuts"][cut_pos]
 # Graph info
-with open(f"WS-RQAOA/Graphs/graph{n_}_{flag}_{iteration}.json", "r", encoding="utf-8") as f:
+with open(f"WS_RQAOA/Graphs/graph{n_}_{flag}_{iteration}.json", "r", encoding="utf-8") as f:
     data_graphs = json.load(f)   
 G = json_graph.node_link_graph(data_graphs["graph"]) 
 # -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -148,7 +148,10 @@ def beta_opt_from_ab(a: float, b: float, g, qc_res_no_params, H, backend) -> flo
     print("beta_stars---", candidates, flush = True)
     print("beta_stars vals---", vals, flush = True)
     return float(candidates[int(np.argmin(vals))]), float(vals[int(np.argmin(vals))])
-
+# -------------------------------------------------------------------------------------------------------
+def _E_of_beta(a, b, beta):
+    return a*np.sin(2*beta) + b*np.sin(4*beta)
+# -------------------------------------------------------------------------------------------------------
 def beta_star_from_ab_scipy(a: float, b: float, domain=(3*np.pi/8, 3*np.pi/4)):
     """
     Minimize the surrogate f(β) = a sin(2β) + b sin(4β)
@@ -346,7 +349,7 @@ for g in gamma_grid:
     print("beta_star (from SciPy surrogate)", beta_star1, flush=True)
 
     E_star_true1 = get_expval1([beta_star1, g], qc_res_no_params, H, backend)
-    print("E_star true (normalized)", E_star_true1/E_mc, flush=True)
+    print("E_star true (normalized)", E_star_true1, flush=True)
 
     beta_star_per_gamma1.append(beta_star1)
     E_star_per_gamma1.append(E_star_true1)
@@ -383,7 +386,7 @@ out = {"n": n_,
        "cut_pos": cut_pos,  
        "pwf": pwf,
        }
-out_dir = Path("WS-RQAOA/Probabilities")
+out_dir = Path("WS_RQAOA/Probabilities")
 out_dir.mkdir(parents=True, exist_ok=True)
 out_path = out_dir / f"probs{n_}_{flag}_{iteration}_{cut_pos}.json"
 with open(out_path, "w", encoding="utf-8") as f:

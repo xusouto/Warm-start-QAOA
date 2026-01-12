@@ -204,7 +204,7 @@ def get_expval1(result, candidate_circuit, hamiltonian, backend):
 
 # Utils 
 # -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-def QUBO_to_Ising_weighted_graph_nx(G: nx.Graph) -> Tuple[List[List[int]], List[float], float]:
+def QUBO_to_Ising_weighted_graph_nx(G: nx.Graph):
 
     n = len(G.nodes)
     pauli_terms = []
@@ -225,7 +225,7 @@ def QUBO_to_Ising_weighted_graph_nx(G: nx.Graph) -> Tuple[List[List[int]], List[
   
     return pauli_terms, weights, offset
 # -------------------------------------------------------------------------------------------------------
-def ising_from_terms_qiskit(pauli_terms: List[List[float]], weights: List[float], offset: float = 0.0, reverse_qubit_order: bool = True):
+def ising_from_terms_qiskit(pauli_terms, weights, offset: float = 0.0, reverse_qubit_order: bool = True):
     T = np.asarray(pauli_terms, dtype=float)
     w = np.asarray(weights, dtype=float)
     labels = []

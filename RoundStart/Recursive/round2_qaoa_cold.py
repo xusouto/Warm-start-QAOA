@@ -56,7 +56,7 @@ n_ = args.n
 flag = args.flag.lower() == "true"
 iteration = args.iter
 # Graph info
-with open(f"CS-RQAOA/Graphs/graph{n_}_{flag}_{iteration}.json", "r", encoding="utf-8") as f:
+with open(f"CS_RQAOA/Graphs/graph{n_}_{flag}_{iteration}.json", "r", encoding="utf-8") as f:
     data_graphs = json.load(f)   
 G = json_graph.node_link_graph(data_graphs["graph"]) 
 # -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -75,13 +75,13 @@ def QUBO_to_Ising_weighted_graph_nx(G: nx.Graph) -> Tuple[List[List[int]], List[
     # Two-qubit Pauli-ZZ terms based on edges in the graph 
     for i in range(n - 1):
         for j in range(i + 1, n):
-            if Q[i][j] != 0:  # If there's an edge (weight > 0)
+            if Q[i][j] != 0:  # If there's an edge
                 term = np.zeros(n)
                 term[i] = 1
                 term[j] = 1
                 pauli_terms.append(term.tolist())  # Pauli-ZZ between qubits i and j
                 
-                weight = Q[i][j] / 2  # Weight for this edge
+                weight = Q[i][j] / 2    # Weight for this edge
                 weights.append(weight)  # Add to the weights list
   
     return pauli_terms, weights, offset
@@ -127,7 +127,6 @@ def create_custom_array_even_odd(length: int, lower1: float, upper1: float, lowe
     if lower2 > upper2:
         raise ValueError("lower2 must be <= upper2.")
 
-    # Sample one value for even indices and one for odd indices
     even_val = np.random.uniform(lower1, upper1)
     odd_val  = np.random.uniform(lower2, upper2)
     arr = np.empty(length, dtype=float)
@@ -140,7 +139,6 @@ def create_custom_array_even_odd(length: int, lower1: float, upper1: float, lowe
 # Qiskit Utils
 # -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 def cost_func_estimator(params, ansatz, hamiltonian, backend):
-    # If ansatz has a layout (because you transpiled), map the observable to it:
     e = get_expval1(params, ansatz, hamiltonian, backend)
     return e
 # -------------------------------------------------------------------------------------------------------
@@ -158,7 +156,6 @@ def prob_map_from_res(res) -> Dict[Tuple[int, ...], float]:
     return dict(pm)
 # -------------------------------------------------------------------------------------------------------
 def get_expval1(result, candidate_circuit, hamiltonian, backend):
-    # If ansatz has a layout (because you transpiled), map the observable to it:
     isa_hamiltonian = hamiltonian.apply_layout(candidate_circuit.layout) if getattr(candidate_circuit, "layout", None) else hamiltonian
     estimator = Estimator(mode=backend)
     estimator.options.default_shots = 500000
@@ -189,7 +186,7 @@ def cost_circ(circuit, n, pauli_terms: List[List[float]], weights: List[float], 
             i, j = idx
             # RZZ(θ) = exp(-i θ ZZ / 2) => θ = 2 * gamma * w
             circuit.cx(i, j)                   # First CNOT
-            circuit.rz(wk * gamma, j)       # RZ rotation on the target qubit (v)
+            circuit.rz(wk * gamma, j)          # RZ rotation on the target qubit (v)
             circuit.cx(i, j) 
 # -------------------------------------------------------------------------------------------------------
 def mixer_circ(circuit, n, warm: bool, thetas, beta):
@@ -247,8 +244,8 @@ def solve_hm(n, warm: bool, lukewarm: bool, cost_operator, pauli_params, pauli_w
         args=(circuit_w_ansz, cost_operator, backend),
         method="COBYLA",
         options={
-        'rhobeg': 0.4,                  # ~10% of variable scale; tune 0.05–0.5
-        'tol': 1e-4,                    # stopping tolerance; try 1e-3…1e-5         
+        'rhobeg': 0.4,                  
+        'tol': 1e-4,                    # stopping tolerance     
         'maxiter': 100000, 
     }) 
     print(result, flush = True )  
@@ -278,7 +275,7 @@ print("γ*, β*:", gamma_star1, beta_star1, flush=True)
 # -------------------------------------------------------------------------------------------------------
 # Solve QAOA
 # -------------------------------------------------------------------------------------------------------
-cut = [random.randint(0, 1) for _ in range(n_)] # not used, just to keep same functions
+cut = [random.randint(0, 1) for _ in range(n_)] 
 ew, pwf = solve_hm(n_, False, False, H, pauli_terms, weights, cut, eps, 1, [beta_star1, gamma_star1])
 print("Energy", ew, flush=True)
 energies.append(ew)
@@ -290,7 +287,7 @@ out = {"n": n_,
        "iter": iteration,
        "pwf": pwf,
        }
-out_dir = Path("CS-RQAOA/Probabilities")
+out_dir = Path("CS_RQAOA/Probabilities")
 out_dir.mkdir(parents=True, exist_ok=True)
 out_path = out_dir / f"probs{n_}_{flag}_{iteration}.json"
 with open(out_path, "w", encoding="utf-8") as f:

@@ -40,11 +40,6 @@ def equal_eps(eps_ref: np.ndarray, eps_other: np.ndarray, tol: float) -> bool:
 def collect_grouped(files: List[Path], tol: float) -> Tuple[np.ndarray, Dict[int, List[np.ndarray]], Dict[int, List[int]]]:
     """
     Group energies by graph id. Inside each graph, we store all cut arrays.
-
-    Returns:
-        eps_ref: (N,) reference eps grid shared by all files
-        by_graph: dict[graph_id] -> list of energy arrays (each shape (N,))
-        cuts_by_graph: dict[graph_id] -> list of cut ids (if parsed)
     """
     eps_ref = None
     by_graph: Dict[int, List[np.ndarray]] = {}
@@ -111,12 +106,6 @@ def compute_two_stage_stats(by_graph: Dict[int, List[np.ndarray]]) -> Tuple[np.n
     """
     First average over cuts WITHIN each graph (equal weight per cut in that graph).
     Then average the resulting per-graph means EQUALLY across graphs.
-
-    Returns:
-        mean_across_graphs: (N,)
-        std_across_graphs: (N,)    # std of per-graph means
-        stderr_across_graphs: (N,) # std/sqrt(num_graphs)
-        per_graph_means_stack: (G, N) # stacked per-graph means (for quantiles/median)
     """
     # Per-graph mean over cuts
     per_graph_means = []
@@ -150,21 +139,21 @@ def plot(eps: np.ndarray,
          all_runs: List[np.ndarray],
          png_path: Path):
     """
-    Plot layers (from background to foreground):
+    Plot layers:
       1) Small dots: each WS-QAOA run energy (every JSON file).
       2) IQR band (25% - 75%) across graphs of per-graph means.
       3) Median line across graphs of per-graph means.
-      4) (Optional) Mean line and std/stderr shading, per original flag.
+      4) Mean line and std/stderr shading, per original flag.
       5) Text labels on the two maximum median points.
     """
     plt.figure()
 
-    # 1) Small dots for each WS-QAOA run
-    #    (plotting each file's energy array as tiny points along eps)
+    # Small dots for each WS-QAOA run
+
     for run in all_runs:
         plt.scatter(eps, run, s=8, alpha=0.35, linewidths=0)
 
-    # 2+3) IQR band & median across graphs (of per-graph means)
+    # IQR band & median across graphs 
     p25 = np.percentile(per_graph_means_stack, 25, axis=0)
     med = np.percentile(per_graph_means_stack, 50, axis=0)
     p75 = np.percentile(per_graph_means_stack, 75, axis=0)
@@ -231,22 +220,22 @@ def main():
         else:
             print(f"  - Graph {g}: {ncuts} cuts")
 
-    # Two-stage stats (and per-graph means stack for quantiles/median)
+    # Two-stage stats (
     mean, std_graphs, stderr_graphs, per_graph_means_stack = compute_two_stage_stats(by_graph)
 
-    # Choose error shading (across graphs)
+    # Choose error shading¡
     err = {"none": np.zeros_like(mean), "std": std_graphs, "stderr": stderr_graphs}[args.with_error]
 
-    # Save CSV (mean + std across graphs) – unchanged
+    # Save CSV ¡
     save_csv(args.csv, eps, mean, std_graphs)
     print(f"[OK] Saved CSV -> {args.csv}")
 
-    # Collect all individual WS-QAOA runs (each file) for dot layer
+    # Collect all individual WS-QAOA runs ¡for dot layer
     all_runs = []
     for e_list in by_graph.values():
         all_runs.extend(e_list)  # each is shape (N,)
 
-    # Plot with dots + IQR + median (+ optional mean±error)
+    # Plot with dots + IQR + median (+ optional m¡
     plot(eps, mean, err, args.with_error, per_graph_means_stack, all_runs, args.png)
 
 if __name__ == "__main__":

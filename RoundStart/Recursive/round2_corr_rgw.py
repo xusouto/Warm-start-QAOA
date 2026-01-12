@@ -36,7 +36,7 @@ cuts_path = f"RGW/Cuts/cuts{n_}_{flag}_{iteration}.json"
 with open(cuts_path, "r", encoding="utf-8") as f:
     data_cuts = json.load(f)
 
-cuts = np.asarray(data_cuts["cuts"], dtype=int)   # shape: (numcuts, n_bits)
+cuts = np.asarray(data_cuts["cuts"], dtype=int)   
 numcuts = data_cuts.get("numcuts", cuts.shape[0])
 
 if cuts.shape[0] != numcuts:

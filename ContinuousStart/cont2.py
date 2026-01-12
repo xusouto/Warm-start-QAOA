@@ -113,9 +113,9 @@ def simulate_portfolio_gbm(
 ):
     """
     Simulate n asset price paths via GBM for N days (S_{i,0}=1), compute daily returns r_{i,k},
-    then return (mu, Sigma) where mu[i] = mean_k r_{i,k}, and Sigma is the n×n covariance of returns.
+    then return mu, Sigma.
     """
-    print ("seed was:", seed)
+    print ("Seed was:", seed)
     rng = np.random.default_rng(seed)
   
     # Draw μ_i and σ_i as specified
@@ -126,7 +126,7 @@ def simulate_portfolio_gbm(
     z = rng.standard_normal(size=(n, N))            # independent per asset/day
     W = np.cumsum(z, axis=1) / np.sqrt(N)           # shape (n, N), W_k
 
-    # Build S_{i,k} using S_{i,0}=1 and the closed-form GBM solution in the text:
+    # Build S_{i,k} using S_{i,0}=1 and the closed-form GBM solution:
     # S_{i,k} = exp( (μ_i - σ_i^2/2) * (k/N) + σ_i * W_k )
     k_over_N = (np.arange(1, N+1) / N)[None, :]     # shape (1, N)
     drift    = (mu_i[:, None] - 0.5 * sigma_i[:, None]**2) * k_over_N
@@ -158,14 +158,10 @@ def _bs_from_pre_sol(pre_sol) -> str:
 # -------------------------------------------------------------------------------------------------------
 def get_probs1(circuit: QuantumCircuit, result, pre_sol):
     """
-    Exact P(pre_sol) using StatevectorSampler, with a measured copy of the circuit
-    to avoid the 'no classical registers' warning.
-    `result` can be OptimizeResult (.x) or array-like.
+    Exact probability using StatevectorSampler.
     """
     params = getattr(result, "x", result)
     bound = circuit.assign_parameters(params).copy()
-
-    # Add classical bits + measurements to avoid the warning (on the copy only)
     bound.measure_all(add_bits=True)
 
     bs = _bs_from_pre_sol(pre_sol)
@@ -176,31 +172,25 @@ def get_probs1(circuit: QuantumCircuit, result, pre_sol):
     sampler = StatevectorSampler()
     res = sampler.run([bound]).result()
 
-    # Case A: classic SamplerResult with quasi_dists (int keys, little-endian)
+    # Classic SamplerResult with quasi_dists (int keys, little-endian)
     qd = getattr(res, "quasi_dists", None)
     if qd is not None:
         return float(qd[0].get(int(bs[::-1], 2), 0.0))
 
-    # Case B: PrimitiveResult style with bitstring probabilities
+    # PrimitiveResult style with bitstring probabilities
     try:
         probs_bin = res[0].data.meas.get_probabilities()  # {'0101': p, ...}
         return float(probs_bin.get(bs, 0.0))
     except Exception:
-        # Fallback: pure statevector (shouldn't be hit with StatevectorSampler)
         sv = Statevector.from_instruction(bound.remove_final_measurements(inplace=False))
         return float(abs(sv.data[int(bs[::-1], 2)])**2)
 # -------------------------------------------------------------------------------------------------------
 def get_expval1(result, candidate_circuit, hamiltonian):
-    # If ansatz has a layout (because you transpiled), map the observable to it:
     estimator = StatevectorEstimator()
     job = estimator.run([(candidate_circuit, hamiltonian, result)])
     result = job.result()[0]
     cost = float(result.data.evs)
     return cost
-# -------------------------------------------------------------------------------------------------------
-def to_bitstring(integer, num_bits):
-    result = np.binary_repr(integer, width=num_bits)
-    return [int(digit) for digit in result]
 # -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 # Parameter initialization
@@ -209,16 +199,6 @@ def create_custom_array(length: int, lower1: float, upper1: float, lower2: float
     """
     Creates an array of a given length where the first half has identical random values between
     lower1 and upper1, and the second half has identical random values between lower2 and upper2.
-
-    Parameters:
-        length (int): The desired length of the array (should be an even number).
-        lower1 (float): Lower boundary for the first half.
-        upper1 (float): Upper boundary for the first half.
-        lower2 (float): Lower boundary for the second half.
-        upper2 (float): Upper boundary for the second half.
-
-    Returns:
-        np.ndarray: The resulting array with the described pattern.
     """
     if length % 2 != 0:
         raise ValueError("Length must be an even number to split into two halves.")
@@ -235,11 +215,6 @@ def create_custom_array(length: int, lower1: float, upper1: float, lower2: float
 
     return array
 # -------------------------------------------------------------------------------------------------------
-def rand_vec(i: int, seed) -> np.ndarray:
-    """[-2π, 2π]"""
-    rng = np.random.default_rng(seed)
-    return rng.uniform(-2*np.pi, 2*np.pi, size=2*i)
-# -------------------------------------------------------------------------------------------------------
 def create_custom_array_even_odd(length: int,
                         lower1: float, upper1: float,
                         lower2: float, upper2: float) -> np.ndarray:
@@ -247,14 +222,6 @@ def create_custom_array_even_odd(length: int,
     Creates an array where all even indices hold the same random value sampled
     from [lower1, upper1], and all odd indices hold the same random value
     sampled from [lower2, upper2].
-
-    Parameters:
-        length (int): Desired array length (any non-negative integer).
-        lower1, upper1: Bounds for the value used at even indices.
-        lower2, upper2: Bounds for the value used at odd indices.
-
-    Returns:
-        np.ndarray: Array of shape (length,).
     """
     if length < 0:
         raise ValueError("Length must be non-negative.")
@@ -311,7 +278,6 @@ def QAOA_hm_1(n, pauli_params, pauli_weights, warm: bool, lukewarm : bool, pre_s
     gammas = ParameterVector("gamma", depth)  # gamma[0],...,gamma[depth-1]
     betas  = ParameterVector("beta",  depth)  # beta[0],...,beta[depth-1]
 
-    # Build initial state (your function)
     init_qc = init(n, warm, thetas)
 
     circuit = QuantumCircuit(n, name="QAOA")
@@ -337,11 +303,7 @@ def QAOA_hm_1(n, pauli_params, pauli_weights, warm: bool, lukewarm : bool, pre_s
 def cost(n,pauli_terms: List[List[float]],weights: List[float],gamma):
     """
     Append the QAOA cost unitary U_C(gamma) = exp(-i * gamma * H_C)
-    for H_C = sum_k w_k * Z^{(term_k)} (offset ignored as global phase).
-
-    pauli_terms: list of 0/1 masks (floats ok), len = m, each of length n (num qubits)
-    weights:     list/array of length m
-    gamma:       float or qiskit Parameter
+    for H_C = sum_k w_k * Z^{(term_k)} (offset ignored).
     """
     qc_p = QuantumCircuit(n)
     w = np.asarray(weights, dtype=float)
@@ -386,26 +348,14 @@ def QUBO_to_Ising(Q: Tensor) -> Tuple[Tensor, List[float], float]:
     """
     Cnvert the Q matrix into a the indication of pauli terms, the corresponding weights, and the offset.
     The outputs are used to construct an Ising Hamiltonian for QAOA.
-
-    :param Q: The n-by-n square and symmetric Q-matrix.
-    :return pauli_terms: A list of 0/1 series, where each element represents a Pauli term.
-    A value of 1 indicates the presence of a Pauli-Z operator, while a value of 0 indicates its absence.
-    :return weights: A list of weights corresponding to each Pauli term.
-    :return offset: A float representing the offset term of the Ising Hamiltonian.
     """
-
-    # input is n-by-n symmetric numpy array corresponding to Q-matrix
-    # output is the components of Ising Hamiltonian
-
     n = Q.shape[0]
 
     # square matrix check
     if Q[0].shape[0] != n:
         raise ValueError("Matrix is not a square matrix.")
 
-    offset = (
-        np.triu(Q, 0).sum() / 2
-    )  # Calculate the offset term of the Ising Hamiltonian
+    offset = (np.triu(Q, 0).sum() / 2)  # Calculate the offset term of the Ising Hamiltonian
     pauli_terms = []  # List to store the Pauli terms
     weights = (
         -np.sum(Q, axis=1) / 2
@@ -427,24 +377,14 @@ def QUBO_to_Ising(Q: Tensor) -> Tuple[Tensor, List[float], float]:
                 term.tolist()
             )  # Add a Pauli term corresponding to a two-qubit interaction
 
-            weight = (
-                Q[i][j] / 2
-            )  # Calculate the weight for the two-qubit interaction term
-            weights = np.concatenate(
-                (weights, weight), axis=None
-            )  # Add the weight to the weights list
+            weight = (Q[i][j] / 2)  # Calculate the weight for the two-qubit interaction term
+            weights = np.concatenate((weights, weight), axis=None)  # Add the weight to the weights list
 
     return pauli_terms, weights, offset
 # -------------------------------------------------------------------------------------------------------
 def QUBO_from_portfolio(cov: Array, mean: Array, q: float, B: int, t: float) -> Tensor:
     """
-    convert portfolio parameters to a Q matrix
-    :param cov: n-by-n covariance numpy array
-    :param mean: numpy array of means
-    :param q: the risk preference of investor
-    :param B: budget
-    :param t: penalty factor
-    :return Q: n-by-n symmetric Q matrix
+    Convert portfolio parameters to a Q matrix.
     """
     n = cov.shape[0]
     R = np.diag(mean)
@@ -506,16 +446,9 @@ def energy_from_terms(bits: List[int],pauli_terms: List[List[float]],weights: Li
             E += w * np.prod(z[idx])
     return float(E)
 # -------------------------------------------------------------------------------------------------------
-def ising_from_terms_qiskit(
-    pauli_terms: List[List[float]],
-    weights: List[float],
-    offset: float = 0.0,
-    reverse_qubit_order: bool = True,
-) -> SparsePauliOp:
+def ising_from_terms_qiskit(pauli_terms, weights, offset: float = 0.0, reverse_qubit_order: bool = True):
     """
-    Build H = sum_k w_k * Z^{(term_k)} + offset * I from:
-      - pauli_terms: list of 0/1
-      - weights:    list/array of coefficients 
+    Build H = sum_k w_k * Z^{(term_k)} + offset * I
     Returns Qiskit SparsePauliOp.
     """
     T = np.asarray(pauli_terms, dtype=float)
@@ -540,11 +473,7 @@ def ising_from_terms_qiskit(
         op += SparsePauliOp.from_list([('I' * n, complex(offset))])
     return op
 # -------------------------------------------------------------------------------------------------------
-def ground_energy_from_terms(
-    pauli_terms: List[List[int]],
-    weights: List[float],
-    offset: float = 0.0,
-) -> Tuple[float, List[int]]:
+def ground_energy_from_terms(pauli_terms, weights, offset):
   
     pauli_terms = [list(t) for t in pauli_terms]
     weights = np.asarray(weights, dtype=float)

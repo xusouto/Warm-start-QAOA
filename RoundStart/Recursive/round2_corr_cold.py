@@ -55,11 +55,11 @@ args = parser.parse_args()
 n_ = args.n
 flag = args.flag.lower() == "true"
 iteration = args.iter
-with open(f"CS-RQAOA/Graphs/graph{n_}_{flag}_{iteration}.json", "r", encoding="utf-8") as f:
+with open(f"CS_RQAOA/Graphs/graph{n_}_{flag}_{iteration}.json", "r", encoding="utf-8") as f:
     data = json.load(f)   
 G = json_graph.node_link_graph(data["graph"]) 
 files = (
-    [f"CS-RQAOA/Probabilities/probs{n_}_{flag}_{iteration}.json"]
+    [f"CS_RQAOA/Probabilities/probs{n_}_{flag}_{iteration}.json"]
     )
 # -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -148,7 +148,7 @@ data = json_graph.node_link_data(G_p)
 # Out .jsons
 # ---------------------------------------------------------------------------------------
 out = {"graph": data, "eliminations": step, "nodes_remaining": nodes_next}
-out_dir = Path("CS-RQAOA/Graphs")
+out_dir = Path("CS_RQAOA/Graphs")
 out_dir.mkdir(parents=True, exist_ok=True)
 out_path = out_dir / f"graph{n_-1}_{flag}_{iteration}.json"
 with open(out_path, "w", encoding="utf-8") as f:

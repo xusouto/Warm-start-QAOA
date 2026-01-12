@@ -47,33 +47,19 @@ path = args.folder
 # MAXCUT problem 
 # -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 def gen_maxcut(n, fc: bool, w_min, w_max, seed=None):
-    """
-    Generate a (fully) connected weighted graph for Max-Cut.
 
-    Args:
-        n (int): number of nodes
-        fc (bool): if True, make a fully connected graph
-        w_min, w_max (float): weight range (inclusive on linspace endpoints)
-        seed (int|None): RNG seed; same seed -> identical graph & layout
-
-    Returns:
-        G (nx.Graph), colors (list[str]), pos (dict)
-    """
-    # Local RNGs so we don't touch global state
     py_rng = random.Random(seed)
-    np_rng = np.random.default_rng(seed)  # not strictly needed, but handy if extended
-
     G = nx.Graph()
     G.add_nodes_from(np.arange(0, n, 1))
 
-    pw = np.linspace(w_min, w_max, num=21)  # candidate weights
-    pw_list = pw.tolist()                   # ensure Python sequence for random.choice
+    pw = np.linspace(w_min, w_max, num=21)  
+    pw_list = pw.tolist()                   
 
     elist = []
     if fc:
         for i in range(n):
             for j in range(i + 1, n):
-                w = py_rng.choice(pw_list)  # deterministic choice given seed
+                w = py_rng.choice(pw_list)  
                 elist.append((i,j,w))
     else:
         for i in range(n):

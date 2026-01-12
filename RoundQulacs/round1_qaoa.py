@@ -48,23 +48,7 @@ x_opt = data.get("x_opt")
 def gen_maxcut(n: int, fc: bool, w_min: float, w_max: float, seed=None) -> np.ndarray:
     """
     Generate a random weighted graph for MaxCut as an n x n adjacency matrix W.
-
-    Parameters
-    ----------
-    n : int
-        Number of nodes.
-    fc : bool
-        If True, fully-connected with random weights in [w_min, w_max].
-        If False, random Erdos-Renyi-ish with weights ±1.
-    w_min, w_max : float
-        Bounds for edge weights when fc=True.
-    seed : any
-        Seed for reproducibility (used in Python's random and numpy RNG).
-
-    Returns
-    -------
-    W : np.ndarray, shape (n, n)
-        Symmetric weight matrix with zeros on the diagonal.
+    Symmetric weight matrix with zeros on the diagonal.
     """
     rng = np.random.default_rng(seed)
     py_rng = random.Random(seed)
@@ -104,8 +88,6 @@ def to_bitstring(integer, num_bits):
 
 # Qiskit Utils
 # -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-# -------------------------------------------------------------------------------------------------------
 def get_expval1(n, candidate_circuit, hamiltonian):
     state = QuantumState(n)
     candidate_circuit.update_quantum_state(state)
@@ -129,13 +111,12 @@ def ab_from_energies_fixed_betas(E_beta1: float, E_beta2: float):
 # -------------------------------------------------------------------------------------------------------    
 def beta_star_from_ab_scipy(a: float, b: float, domain=(3*np.pi/8, 3*np.pi/4)):
     """
-    Minimize the surrogate f(β) = a sin(2β) + b sin(4β)
+    Minimize f(β) = a sin(2β) + b sin(4β)
     over β in [β_min, β_max] using scipy.optimize.minimize.
-        Minimum surrogate energy f(β*).
     """
     beta_min, beta_max = domain
 
-    # initial guess: middle of the interval
+    # Initial guess
     x0 = np.array([(beta_min + beta_max)/2.0], dtype=float)
 
     def model(beta_arr):
@@ -173,7 +154,7 @@ def QUBO_to_Ising_weighted_graph(W: np.ndarray) -> Tuple[List[List[int]], List[f
     # Two-qubit Pauli-ZZ terms based on nonzero off-diagonal entries of Q
     for i in range(n - 1):
         for j in range(i + 1, n):
-            if Q[i, j] != 0:  # If there's an edge (non-zero weight)
+            if Q[i, j] != 0:  # If there's an edge 
                 term = np.zeros(n, dtype=int)
                 term[i] = 1
                 term[j] = 1
@@ -185,8 +166,8 @@ def QUBO_to_Ising_weighted_graph(W: np.ndarray) -> Tuple[List[List[int]], List[f
     return pauli_terms, weights, float(offset)
 # -------------------------------------------------------------------------------------------------------
 def ising_from_terms(
-    pauli_terms: List[List[int]],
-    weights: List[float],
+    pauli_terms,
+    weights,
     offset: float = 0.0,
     reverse_qubit_order: bool = True,
     build_qulacs_observable: bool = True,
@@ -209,7 +190,7 @@ def ising_from_terms(
 
         label = ''.join('Z' if b else 'I' for b in mask_for_label)
         labels.append(label)
-        masks.append(mask)  # mask in the "natural" order of your pauli_terms
+        masks.append(mask)  
 
     #Qulacs Observable 
     qulacs_obs: Optional[Observable] = None
@@ -238,7 +219,7 @@ def cost_circ(circuit, n, pauli_terms: List[List[float]], weights: List[float], 
             i, j = idx
             # RZZ(θ) = exp(-i θ ZZ / 2) => θ = 2 * gamma * w
             circuit.add_CNOT_gate(i, j)                   # First CNOT
-            circuit.add_RZ_gate(j, -wk * gamma)       # RZ rotation on the target qubit (v)
+            circuit.add_RZ_gate(j, -wk * gamma)           # RZ rotation on the target qubit (v)
             circuit.add_CNOT_gate(i, j) 
 # -------------------------------------------------------------------------------------------------------
 def mixer_circ(circuit, n, warm: bool, thetas, beta):
@@ -292,8 +273,8 @@ def solve_hm(n, warm: bool, lukewarm: bool, cost_operator, pauli_params, pauli_w
         args=(n, cost_operator, pauli_params, pauli_weights, warm, lukewarm, pre_sol , eps, depth),
         method="COBYLA",
         options={
-        'rhobeg': 0.4,                  # ~10% of variable scale; tune 0.05–0.5
-        'tol': 1e-4,                    # stopping tolerance; try 1e-3…1e-5 
+        'rhobeg': 0.4,                  
+        'tol': 1e-4,                    # stopping tolerance
         'maxiter': 100000,                         
     })
         
@@ -301,7 +282,6 @@ def solve_hm(n, warm: bool, lukewarm: bool, cost_operator, pauli_params, pauli_w
     print("COBYLA Optimization ended", result.x , flush = True)
     expval = cost_func_estimator(result.x, n, cost_operator, pauli_params, pauli_weights, warm, lukewarm, pre_sol , eps, depth)
     print("Expectation value of Hc after otimization:", expval, flush=True)
-    #expval_id = get_expval1([np.pi/2, 0], circuit_w_ansz, cost_operator, backend)
     return expval
 # -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 

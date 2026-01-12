@@ -45,7 +45,7 @@ def load_results(dir_path: str, pattern: str):
         deltas.append(dwc)
 
     if bad:
-        print("⚠️ Skipped files:")
+        print("Skipped files:")
         for p, err in bad:
             print(f"  - {p}: {err}")
 

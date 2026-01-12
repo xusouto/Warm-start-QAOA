@@ -5,8 +5,8 @@
 #SBATCH --time=24:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=5              # 64 total tasks (processes)
-#SBATCH --cpus-per-task=10         # 1 hw-thread per task
-#SBATCH --mem-per-cpu=3G          # 64 * 3G = 192G total (ensure node has this)
+#SBATCH --cpus-per-task=1         # 1 hw-thread per task
+#SBATCH --mem-per-cpu=500M          # 64 * 3G = 192G total (ensure node has this)
 
 
 module load qmio/hpc miniconda3/22.11.1-1
@@ -23,21 +23,21 @@ echo "Current dir:   $(pwd)"
 echo "Start time:    $(date)"
 echo "========================================="
 
-BASE="/mnt/netapp1/Store_CESGA/home/cesga/jsouto/WS_GitHub/RoundStart/Recursive"
+
 t=$1  # Initialize t to n
 n=$1
 
 # First task with initial iteration
-srun -n1 --cpus-per-task=1 --exclusive --cpu-bind=threads python round2_graph.py --n "$1" --flag "$2" --iter "$3" --folder WS-RQAOA &
+srun -n1 --cpus-per-task=1 --exclusive --cpu-bind=threads python round2_graph.py --n "$1" --flag "$2" --iter "$3" --folder WS_RQAOA &
 wait
 echo "Graphs generated:    $(date)"
 # Main loop: run while t > n/2
 while [ "$t" -gt $(( n / 2 )) ]; do
   # GW pre-solver (serial)
   srun -n1 --cpus-per-task=1 --exclusive --cpu-bind=threads \
-    python round2_cuts.py --n "$t" --flag "$2" --iter "$3" --folder WS-RQAOA
+    python round2_cuts.py --n "$t" --flag "$2" --iter "$3" --folder WS_RQAOA
   echo "Cuts generated:    $(date)"
-  CUTS_JSON="$BASE/Cuts/cuts${t}_$2_$3.json"
+  CUTS_JSON="WS_RQAOA/Cuts/cuts${t}_$2_$3.json"
   NUMCUTS=$(python -c 'import json,sys; d=json.load(open(sys.argv[1])); print(int(d.get("numcuts",0)))' "$CUTS_JSON")
 
   # Loop over the cuts (0..NUMCUTS-1)
@@ -57,7 +57,7 @@ done
 
 # Final reconstruction
 srun -n1 --cpus-per-task=1 --exclusive --cpu-bind=threads \
-  python round2_fin.py --n "$1" --t "$t" --flag "$2" --iter "$3" --folder WS-RQAOA
+  python round2_fin.py --n "$1" --t "$t" --flag "$2" --iter "$3" --folder WS_RQAOA
 
 # Wait for all tasks to complete
 wait

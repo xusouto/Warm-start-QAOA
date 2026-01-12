@@ -4,9 +4,9 @@
 #SBATCH -e myjob_%j.e
 #SBATCH --time=24:00:00
 #SBATCH --nodes=1
-#SBATCH --ntasks=1              # 64 total tasks (processes)
-#SBATCH --cpus-per-task=1         # 1 hw-thread per task
-#SBATCH --mem-per-cpu=200M          # 64 * 3G = 192G total (ensure node has this)
+#SBATCH --ntasks=1              
+#SBATCH --cpus-per-task=1         
+#SBATCH --mem-per-cpu=200M          
 
 
 module load qmio/hpc miniconda3/22.11.1-1
@@ -23,10 +23,7 @@ echo "Current dir:   $(pwd)"
 echo "Start time:    $(date)"
 echo "========================================="
 
-BASE="/mnt/netapp1/Store_CESGA/home/cesga/jsouto/WS_GitHub/RoundStart/Recursive"
 
-
-# First task with initial iteration
 srun -n1 --cpus-per-task=1 --exclusive --cpu-bind=threads python round2_graph.py --n "$1" --flag "$2" --iter "$3" --folder GW&
 wait
 echo "Graphs generated:    $(date)"

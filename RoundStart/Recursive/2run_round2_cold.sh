@@ -23,12 +23,12 @@ echo "Current dir:   $(pwd)"
 echo "Start time:    $(date)"
 echo "========================================="
 
-BASE="/mnt/netapp1/Store_CESGA/home/cesga/jsouto/WS_GitHub/RoundStart/Recursive"
+
 t=$1  # Initialize t to n
 n=$1
 
 # First task with initial iteration
-srun -n1 --cpus-per-task=1 --exclusive --cpu-bind=threads python round2_graph.py --n "$1" --flag "$2" --iter "$3" --folder CS-RQAOA&
+srun -n1 --cpus-per-task=1 --exclusive --cpu-bind=threads python round2_graph.py --n "$1" --flag "$2" --iter "$3" --folder CS_RQAOA&
 wait
 echo "Graphs generated:    $(date)"
 # Main loop: run while t > n/2
@@ -49,7 +49,7 @@ done
 
 # Final reconstruction
 srun -n1 --cpus-per-task=1 --exclusive --cpu-bind=threads \
-  python round2_fin.py --n "$1" --t "$t" --flag "$2" --iter "$3" --folder CS-RQAOA
+  python round2_fin.py --n "$1" --t "$t" --flag "$2" --iter "$3" --folder CS_RQAOA
 
 # Wait for all tasks to complete
 wait
